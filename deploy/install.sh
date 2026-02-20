@@ -53,14 +53,31 @@ else
     mkdir -p "$INSTALL_DIR"
 fi
 
-# Copy files
-echo -e "${BLUE}[*] Copying files...${NC}"
+# Copy files and setup git
+echo -e "${BLUE}[*] Copying files and setting up git repository...${NC}"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
+
+# Copy everything including hidden files (like .git if it exists in the source)
 if [ "$EUID" -ne 0 ] && [ "$SERVICE_USER" != "$(whoami)" ]; then
-    run_as_root cp -ru "$SCRIPT_DIR"/* "$INSTALL_DIR"/
+    run_as_root cp -r "$SCRIPT_DIR"/. "$INSTALL_DIR"/
     run_as_root chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 else
-    cp -ru "$SCRIPT_DIR"/* "$INSTALL_DIR"/
+    cp -r "$SCRIPT_DIR"/. "$INSTALL_DIR"/
+fi
+
+# Ensure it's a valid git repository so `pantheon update` works
+cd "$INSTALL_DIR"
+if [ ! -d .git ]; then
+    echo -e "${YELLOW}[!] Source was not a git clone. Initializing git tracking for future updates...${NC}"
+    if [ "$EUID" -ne 0 ] && [ "$SERVICE_USER" != "$(whoami)" ]; then
+        su - "$SERVICE_USER" -c "cd $INSTALL_DIR && git init && git branch -M main && git remote add origin https://github.com/bryanmandville/pantheon_bot.git && git fetch --all && git reset --hard origin/main"
+    else
+        git init
+        git branch -M main
+        git remote add origin https://github.com/bryanmandville/pantheon_bot.git
+        git fetch --all
+        git reset --hard origin/main
+    fi
 fi
 
 # Switch to context of service user to run python tasks
