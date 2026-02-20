@@ -21,6 +21,19 @@ echo ""
 DEFAULT_INSTALL_DIR="/opt/apex"
 DEFAULT_USER=$(whoami)
 
+# Helper function to run commands with sudo if available and necessary
+run_as_root() {
+    if [ "$EUID" -eq 0 ]; then
+        "$@"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo "$@"
+    else
+        echo -e "${RED}[!] Error: Root privileges required but 'sudo' is not installed.${NC}"
+        echo -e "${RED}[!] Please run this script as root.${NC}"
+        exit 1
+    fi
+}
+
 echo -e "${GREEN}Welcome to the Pantheon APEX Installer.${NC}"
 read -p "Enter installation directory [$DEFAULT_INSTALL_DIR]: " INSTALL_DIR
 INSTALL_DIR=${INSTALL_DIR:-$DEFAULT_INSTALL_DIR}
@@ -31,11 +44,11 @@ SERVICE_USER=${SERVICE_USER:-$DEFAULT_USER}
 echo ""
 echo -e "${BLUE}[*] Preparing installation at $INSTALL_DIR for user $SERVICE_USER...${NC}"
 
-# Ensure we run this with sudo capabilities if writing to /opt
+# Ensure we run this with root capabilities if writing to /opt
 if [ ! -w "$(dirname "$INSTALL_DIR")" ] && [ "$EUID" -ne 0 ]; then
-    echo -e "${BLUE}[*] We need sudo to create the installation directory...${NC}"
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    echo -e "${BLUE}[*] We need root privileges to create the installation directory...${NC}"
+    run_as_root mkdir -p "$INSTALL_DIR"
+    run_as_root chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 else
     mkdir -p "$INSTALL_DIR"
 fi
@@ -44,8 +57,8 @@ fi
 echo -e "${BLUE}[*] Copying files...${NC}"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 if [ "$EUID" -ne 0 ] && [ "$SERVICE_USER" != "$(whoami)" ]; then
-    sudo cp -ru "$SCRIPT_DIR"/* "$INSTALL_DIR"/
-    sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+    run_as_root cp -ru "$SCRIPT_DIR"/* "$INSTALL_DIR"/
+    run_as_root chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 else
     cp -ru "$SCRIPT_DIR"/* "$INSTALL_DIR"/
 fi
@@ -73,16 +86,16 @@ echo -e "${BLUE}[*] Configuring systemd service...${NC}"
 SERVICE_FILE="/etc/systemd/system/apex.service"
 # Create the service file using the template
 cat "$INSTALL_DIR/deploy/apex.service" | sed "s|{INSTALL_DIR}|$INSTALL_DIR|g" | sed "s|{SERVICE_USER}|$SERVICE_USER|g" > /tmp/apex.service
-sudo mv /tmp/apex.service "$SERVICE_FILE"
-sudo chmod 644 "$SERVICE_FILE"
+run_as_root mv /tmp/apex.service "$SERVICE_FILE"
+run_as_root chmod 644 "$SERVICE_FILE"
 
 echo -e "${BLUE}[*] Creating global symlink...${NC}"
-sudo ln -sf "$INSTALL_DIR/.venv/bin/pantheon" /usr/local/bin/pantheon
+run_as_root ln -sf "$INSTALL_DIR/.venv/bin/pantheon" /usr/local/bin/pantheon
 
 echo -e "${BLUE}[*] Starting background service...${NC}"
-sudo systemctl daemon-reload
-sudo systemctl enable apex.service
-sudo systemctl restart apex.service
+run_as_root systemctl daemon-reload
+run_as_root systemctl enable apex.service
+run_as_root systemctl restart apex.service
 
 echo ""
 echo -e "${GREEN}Installation successful!${NC}"

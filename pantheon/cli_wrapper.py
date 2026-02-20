@@ -4,6 +4,19 @@ import argparse
 import os
 import subprocess
 import sys
+import shutil
+
+
+def get_sudo_cmd(cmd: list[str]) -> list[str]:
+    """Prepend sudo to a command if needed and available."""
+    if os.geteuid() == 0:
+        return cmd # Already root
+        
+    if shutil.which("sudo"):
+        return ["sudo"] + cmd
+        
+    # Running as non-root without sudo available, just return original command and let it fail naturally
+    return cmd
 
 
 def run_systemctl(action: str) -> None:
@@ -15,10 +28,7 @@ def run_systemctl(action: str) -> None:
 
     try:
         # Check if we have sudo privileges or can run systemctl
-        if os.geteuid() == 0:
-            cmd = ["systemctl", action, "apex"]
-        else:
-            cmd = ["sudo", "systemctl", action, "apex"]
+        cmd = get_sudo_cmd(["systemctl", action, "apex"])
             
         print(f"Executing: {' '.join(cmd)}")
         subprocess.run(cmd, check=True)
@@ -95,7 +105,10 @@ def cmd_uninstall(args: argparse.Namespace) -> None:
     """Handle the 'uninstall' subcommand."""
     print("Warning: This will completely remove APEX, its configuration, and its memory database.")
     
-    if os.geteuid() != 0:
+    if os.geteuid() != 0 and not shutil.which("sudo"):
+        print("Please run this command as root (e.g. su -c 'pantheon uninstall')", file=sys.stderr)
+        sys.exit(1)
+    elif os.geteuid() != 0:
         print("Please run this command with sudo: sudo pantheon uninstall", file=sys.stderr)
         sys.exit(1)
         
@@ -106,16 +119,20 @@ def cmd_uninstall(args: argparse.Namespace) -> None:
 
     print("Stopping and removing background service...")
     try:
-        subprocess.run(["systemctl", "stop", "apex"], stderr=subprocess.DEVNULL)
-        subprocess.run(["systemctl", "disable", "apex"], stderr=subprocess.DEVNULL)
+        stop_cmd = get_sudo_cmd(["systemctl", "stop", "apex"])
+        disable_cmd = get_sudo_cmd(["systemctl", "disable", "apex"])
+        subprocess.run(stop_cmd, stderr=subprocess.DEVNULL)
+        subprocess.run(disable_cmd, stderr=subprocess.DEVNULL)
     except Exception:
         pass
         
     service_file = "/etc/systemd/system/apex.service"
     if os.path.exists(service_file):
-        os.remove(service_file)
         try:
-            subprocess.run(["systemctl", "daemon-reload"], stderr=subprocess.DEVNULL)
+            rm_cmd = get_sudo_cmd(["rm", "-f", service_file])
+            subprocess.run(rm_cmd, check=True)
+            reload_cmd = get_sudo_cmd(["systemctl", "daemon-reload"])
+            subprocess.run(reload_cmd, stderr=subprocess.DEVNULL)
         except Exception:
             pass
             
@@ -126,12 +143,17 @@ def cmd_uninstall(args: argparse.Namespace) -> None:
         target = os.readlink(symlink_path)
         if ".venv" in target:
             install_dir = target.split(".venv")[0].rstrip("/")
-        os.remove(symlink_path)
+        try:
+            rm_link_cmd = get_sudo_cmd(["rm", "-f", symlink_path])
+            subprocess.run(rm_link_cmd)
+        except Exception:
+            pass
         
     print(f"Removing installation directory: {install_dir} ...")
     
     # Spawn a detached process to delete the folder to avoid issues with deleting the running python binary
-    subprocess.Popen(["bash", "-c", f"sleep 1 && rm -rf '{install_dir}'"])
+    delete_cmd = get_sudo_cmd(["bash", "-c", f"sleep 1 && rm -rf '{install_dir}'"])
+    subprocess.Popen(delete_cmd)
     
     print("Pantheon APEX has been successfully scheduled for uninstallation. It will disappear in a moment. Goodbye!")
     sys.exit(0)
@@ -162,7 +184,10 @@ def cmd_update(args: argparse.Namespace) -> None:
     try:
         # Check permissions
         if not os.access(install_dir, os.W_OK) and os.geteuid() != 0:
-            print("Warning: You may need to run this command with sudo to update files.", file=sys.stderr)
+            if shutil.which("sudo"):
+                print("Warning: You may need to run this command with sudo to update files.", file=sys.stderr)
+            else:
+                print("Warning: You may need to run this command as root to update files.", file=sys.stderr)
             
         # Fetch latest
         subprocess.run(["git", "fetch"], check=True)
