@@ -129,6 +129,10 @@ fi
 
 echo -e "${BLUE}[*] Starting Qdrant vector database via Docker...${NC}"
 if command -v docker >/dev/null 2>&1; then
+    # Ensure service user can interact with docker natively (for APEX allowlist)
+    if getent group docker >/dev/null 2>&1; then
+        run_as_root usermod -aG docker "$SERVICE_USER" || true
+    fi
     # Start only the qdrant service from docker-compose.yml
     run_as_root docker compose -f "$INSTALL_DIR/docker-compose.yml" up -d qdrant || echo -e "${YELLOW}[!] Failed to start Qdrant. Please check your docker installation.${NC}"
 else
