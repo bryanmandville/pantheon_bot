@@ -200,8 +200,9 @@ def run_configurator() -> None:
         ))
         
     except KeyboardInterrupt:
+        import sys
         console.print("\n[yellow]Configuration aborted.[/yellow]")
-        return
+        sys.exit(1)
         
 if __name__ == "__main__":
     run_configurator()

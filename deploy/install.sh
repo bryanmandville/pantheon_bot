@@ -111,10 +111,18 @@ else
 fi
 
 echo -e "${BLUE}[*] Launching Interactive Configurator...${NC}"
+CONFIG_FAILED=0
 if [ "$EUID" -eq 0 ] && [ "$SERVICE_USER" != "root" ]; then
-    su - "$SERVICE_USER" -c "cd $INSTALL_DIR && .venv/bin/pantheon config"
+    su - "$SERVICE_USER" -c "cd $INSTALL_DIR && .venv/bin/pantheon config" || CONFIG_FAILED=1
 else
-    "$INSTALL_DIR"/.venv/bin/pantheon config
+    "$INSTALL_DIR"/.venv/bin/pantheon config || CONFIG_FAILED=1
+fi
+
+if [ "$CONFIG_FAILED" = "1" ]; then
+    echo -e "${RED}[!] Configuration was aborted. Cleaning up setup files...${NC}"
+    cd /
+    run_as_root rm -rf "$INSTALL_DIR"
+    exit 1
 fi
 
 echo -e "${BLUE}[*] Starting Qdrant vector database via Docker...${NC}"
