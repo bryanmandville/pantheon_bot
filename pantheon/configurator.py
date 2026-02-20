@@ -82,12 +82,12 @@ def prompt_secret(key: str, existing_val: str, description: str) -> str:
     
     if existing_val:
         console.print("[green]✓ A value is already set.[/green] [dim](Press Enter to keep existing)[/dim]")
-        val = Prompt.ask("New Value", password=True, default="")
+        val = Prompt.ask("New Value", default="")
         if not val:
             return existing_val
         return val
     else:
-        return Prompt.ask("Value", password=True)
+        return Prompt.ask("Value")
 
 
 def prompt_string(key: str, existing_val: str, default: str, description: str) -> str:
