@@ -48,7 +48,6 @@ echo -e "${BLUE}[*] Preparing installation at $INSTALL_DIR for user $SERVICE_USE
 if [ ! -w "$(dirname "$INSTALL_DIR")" ] && [ "$EUID" -ne 0 ]; then
     echo -e "${BLUE}[*] We need root privileges to create the installation directory...${NC}"
     run_as_root mkdir -p "$INSTALL_DIR"
-    run_as_root chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 else
     mkdir -p "$INSTALL_DIR"
 fi
@@ -60,7 +59,6 @@ SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pw
 # Copy everything including hidden files (like .git if it exists in the source)
 if [ "$EUID" -ne 0 ] && [ "$SERVICE_USER" != "$(whoami)" ]; then
     run_as_root cp -r "$SCRIPT_DIR"/. "$INSTALL_DIR"/
-    run_as_root chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 else
     cp -r "$SCRIPT_DIR"/. "$INSTALL_DIR"/
 fi
@@ -79,6 +77,10 @@ if [ ! -d .git ]; then
         git reset --hard origin/main
     fi
 fi
+
+# Ensure correct ownership of all files before switching context
+echo -e "${BLUE}[*] Setting permissions for user $SERVICE_USER...${NC}"
+run_as_root chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 
 # Switch to context of service user to run python tasks
 cd "$INSTALL_DIR"
