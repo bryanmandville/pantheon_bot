@@ -49,7 +49,10 @@ class Settings(BaseSettings):
         "list", # Added for list files support
     ]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": str(Path(__file__).parent.parent / ".env"), 
+        "env_file_encoding": "utf-8"
+    }
 
     def model_post_init(self, __context):
         """Load allowlist from file or create it if missing."""
