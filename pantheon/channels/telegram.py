@@ -224,6 +224,12 @@ async def _handle_message(message: Message) -> None:
         await _conversation.reset()
         await message.answer("Session reset. KV cache re-warmed.")
         return
+        
+    # Handle /env command
+    if user_text.lower() == "/env":
+        count = settings.reload_env()
+        await message.answer(f"Environment reloaded. {count} keys updated.")
+        return
 
     log.info("Telegram message from %s: %s", message.from_user.id, user_text[:80])
 

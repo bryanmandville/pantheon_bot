@@ -1,5 +1,6 @@
 """Application configuration — loads from .env file."""
 
+import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
@@ -72,6 +73,35 @@ class Settings(BaseSettings):
             # Create file with defaults
             content = "# APEX Shell Allowlist\n# Add one command per line\n" + "\n".join(self.shell_allowlist)
             allowlist_path.write_text(content, encoding="utf-8")
+
+
+    def reload_env(self) -> int:
+        """Manually parse the .env file and inject new/changed keys into os.environ.
+        
+        Returns:
+            The number of newly added or updated environment variables.
+        """
+        env_path = Path(self.model_config["env_file"])
+        if not env_path.exists():
+            return 0
+            
+        count = 0
+        content = env_path.read_text(encoding="utf-8")
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+                
+            key, val = line.split("=", 1)
+            key = key.strip()
+            val = val.strip()
+            
+            # Update os.environ if it's new or changed
+            if os.environ.get(key) != val:
+                os.environ[key] = val
+                count += 1
+                
+        return count
 
 
 settings = Settings()

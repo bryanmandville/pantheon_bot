@@ -23,6 +23,7 @@ _COMMANDS = {
     "/clear": "Clear conversation history",
     "/reset": "Full reset — clear history",
     "/reload": "Reload tools (discover new agents)",
+    "/env": "Reload environment variables from .env",
     "/tools": "List all registered tools",
     "/memory": "Search memory (usage: /memory <query>)",
     "/help": "Show this help",
@@ -141,6 +142,11 @@ async def _handle_command(cmd: str, conversation: Conversation) -> str | None:
         from pantheon.core.tools import get_all_tools
         count = len(get_all_tools())
         console.print(f"[dim]Tools reloaded. {count} tools registered.[/dim]")
+        
+    elif command == "/env":
+        from pantheon.config import settings
+        count = settings.reload_env()
+        console.print(f"[dim]Environment reloaded. {count} keys updated.[/dim]")
 
     elif command == "/tools":
         from pantheon.core.tools import get_all_tools
