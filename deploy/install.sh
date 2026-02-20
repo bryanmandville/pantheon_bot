@@ -66,6 +66,24 @@ fi
 # Switch to context of service user to run python tasks
 cd "$INSTALL_DIR"
 
+echo -e "${BLUE}[*] Checking Python environment dependencies...${NC}"
+if ! python3 -m venv --help >/dev/null 2>&1; then
+    echo -e "${YELLOW}[!] python3-venv is missing. Attempting to install it...${NC}"
+    if command -v apt >/dev/null 2>&1; then
+        run_as_root apt update
+        # Try to install the version-specific venv package or fallback to the generic one
+        PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        run_as_root apt install -y python${PYTHON_VERSION}-venv || run_as_root apt install -y python3-venv
+    elif command -v yum >/dev/null 2>&1; then
+        run_as_root yum install -y python3-venv
+    elif command -v pacman >/dev/null 2>&1; then
+        run_as_root pacman -S --noconfirm python-virtualenv
+    else
+        echo -e "${RED}[!] Could not automatically install python3-venv. Please install it manually for your OS and try again.${NC}"
+        exit 1
+    fi
+fi
+
 echo -e "${BLUE}[*] Setting up Python virtual environment...${NC}"
 if [ "$EUID" -eq 0 ] && [ "$SERVICE_USER" != "root" ]; then
     su - "$SERVICE_USER" -c "cd $INSTALL_DIR && python3 -m venv .venv && source .venv/bin/activate && pip install -e ."
