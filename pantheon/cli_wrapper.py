@@ -205,8 +205,20 @@ def cmd_update(args: argparse.Namespace) -> None:
             print("Pantheon APEX is already up-to-date!")
             return
             
-        print("Updates found! Pulling latest changes...")
+        print("Updates found! Stashing any local operational changes...")
+        # Stash changes to files like CRON.md or agents/ to prevent overwrite conflicts
+        stash_result = subprocess.run(["git", "stash"], capture_output=True, text=True)
+        stashed = "No local changes" not in stash_result.stdout
+            
+        print("Pulling latest core system changes...")
         subprocess.run(["git", "pull"], check=True)
+        
+        if stashed:
+            print("Restoring local operational changes...")
+            try:
+                subprocess.run(["git", "stash", "pop"], check=True, capture_output=True)
+            except subprocess.CalledProcessError:
+                print("Warning: Merge conflict restoring local changes. Please check git status.", file=sys.stderr)
         
         print("Re-installing dependencies to ensure everything is current...")
         subprocess.run([".venv/bin/pip", "install", "-e", "."], check=True)
