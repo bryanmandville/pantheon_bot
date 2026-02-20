@@ -100,6 +100,16 @@ else
     "$INSTALL_DIR"/.venv/bin/pantheon config
 fi
 
+echo -e "${BLUE}[*] Starting Qdrant vector database via Docker...${NC}"
+if command -v docker >/dev/null 2>&1; then
+    # Start only the qdrant service from docker-compose.yml
+    run_as_root docker compose -f "$INSTALL_DIR/docker-compose.yml" up -d qdrant || echo -e "${YELLOW}[!] Failed to start Qdrant. Please check your docker installation.${NC}"
+else
+    echo -e "${YELLOW}[!] Docker not found! Skipping Qdrant spin-up.${NC}"
+    echo -e "${YELLOW}[!] APEX requires Qdrant. Please install Docker manually and run:${NC}"
+    echo -e "${YELLOW}[!] cd $INSTALL_DIR && sudo docker compose up -d qdrant${NC}"
+fi
+
 echo -e "${BLUE}[*] Configuring systemd service...${NC}"
 SERVICE_FILE="/etc/systemd/system/apex.service"
 # Create the service file using the template
