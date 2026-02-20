@@ -1,0 +1,22 @@
+# APEX Shell Allowlist
+# Add one command per line
+ls
+cat
+echo
+date
+uptime
+df
+free
+whoami
+hostname
+uname
+ps
+top
+htop
+ping
+curl
+wget
+docker
+systemctl
+list
+python3

@@ -1,0 +1,18 @@
+[Unit]
+Description=APEX AI Agent System (Pantheon)
+After=network.target
+
+[Service]
+User={SERVICE_USER}
+WorkingDirectory={INSTALL_DIR}
+# Run the background daemon utilizing the virtual environment wrapper
+ExecStart={INSTALL_DIR}/.venv/bin/pantheon service daemon
+
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=apex
+
+[Install]
+WantedBy=multi-user.target

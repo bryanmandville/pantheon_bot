@@ -1,0 +1,37 @@
+[project]
+name = "pantheon"
+version = "0.1.0"
+description = "APEX — Pantheon AI assistant powered by Gemini 2.5 Pro"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "rich>=13.0",
+    "prompt-toolkit>=3.0",
+    "aiogram>=3.15",
+    "apscheduler>=3.10",
+    "mem0ai>=0.1",
+    "ollama>=0.4",
+    "qdrant-client>=1.12",
+    "google-genai>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[project.scripts]
+pantheon = "pantheon.cli_wrapper:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pantheon*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
